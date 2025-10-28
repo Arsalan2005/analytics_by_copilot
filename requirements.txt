@@ -1,0 +1,9 @@
+pandas>=1.5
+matplotlib>=3.5
+seaborn>=0.12
+flask>=2.0
+plotly>=5.0
+networkx>=3.0
+python-dateutil>=2.8
+ruptures>=1.1
+scikit-learn>=1.0

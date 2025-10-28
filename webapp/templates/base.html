@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en" x-data="{ dark: false }">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Perception Lab — Sexual Assault Analytics</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="{{ url_for('static', filename='main.js') }}"></script>
+  <link rel="icon" href="data:," />
+  <style>
+    /* Enhanced utility classes for cybernetic UI */
+    :root { 
+      --primary: #007AFF;
+      --primary-dark: #0051D5;
+    }
+    .panel { 
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(12px);
+      border-radius: 1rem; 
+      padding: 1rem; 
+      box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.1), 0 0 0 1px rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .dark .panel {
+      background: rgba(15,23,42,0.85);
+      border-color: rgba(51,65,85,0.6);
+    }
+    .input { 
+      background: rgba(255,255,255,0.8); 
+      border: 1px solid rgba(226,232,240,0.8); 
+      border-radius: 0.75rem; 
+      padding: 0.5rem 0.75rem;
+      backdrop-filter: blur(8px);
+    }
+    .input:focus { 
+      outline: none; 
+      box-shadow: 0 0 0 3px rgba(0,122,255,0.3); 
+      border-color: var(--primary);
+    }
+    .btn-primary { 
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark)); 
+      color: white; 
+      padding: 0.5rem 0.75rem; 
+      border-radius: 0.75rem;
+      box-shadow: 0 1px 2px rgba(0,122,255,0.15);
+    }
+    .btn-primary:hover { 
+      background: linear-gradient(135deg, var(--primary-dark), #003d82);
+      transform: translateY(-1px);
+    }
+    .btn-secondary { 
+      background: rgba(248,250,252,0.9); 
+      color: #0f172a; 
+      padding: 0.5rem 0.75rem; 
+      border-radius: 0.75rem; 
+      border: 1px solid rgba(226,232,240,0.8);
+      backdrop-filter: blur(8px);
+    }
+    .btn-secondary:hover { background: rgba(241,245,249,0.9); }
+    .btn-ghost { 
+      color: #0f172a; 
+      padding: 0.375rem 0.625rem; 
+      border-radius: 0.75rem; 
+      border: 1px solid rgba(226,232,240,0.6); 
+      background: rgba(255,255,255,0.6);
+      backdrop-filter: blur(4px);
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.8); }
+    .badge { 
+      font-size: 0.75rem; 
+      padding: 0.125rem 0.5rem; 
+      border-radius: 9999px; 
+      border: 1px solid rgba(226,232,240,0.8); 
+      color: #334155;
+      background: rgba(248,250,252,0.8);
+      backdrop-filter: blur(4px);
+    }
+    .card { 
+      background: rgba(255,255,255,0.8); 
+      border-radius: 1rem; 
+      padding: 1rem; 
+      box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.1);
+      border: 1px solid rgba(255,255,255,0.3);
+      backdrop-filter: blur(8px);
+      transition: all 0.25s ease;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px rgba(0,0,0,.1), 0 2px 4px rgba(0,0,0,.06);
+    }
+    .rounded-xl2 { border-radius: 1rem; }
+    .shadow-soft { box-shadow: 0 2px 4px rgba(0,122,255,0.15); }
+    
+    /* Dark mode adaptations */
+    .dark { color-scheme: dark; }
+    .dark body { background: linear-gradient(135deg, #0f172a, #1e293b); color: #e2e8f0; }
+    .dark .input { background: rgba(51,65,85,0.8); border-color: rgba(71,85,105,0.8); color: #e2e8f0; }
+    .dark .btn-secondary { background: rgba(51,65,85,0.9); color: #e2e8f0; border-color: rgba(71,85,105,0.8); }
+    .dark .btn-ghost { background: rgba(51,65,85,0.6); color: #e2e8f0; border-color: rgba(71,85,105,0.6); }
+    .dark .badge { background: rgba(51,65,85,0.8); color: #cbd5e1; border-color: rgba(71,85,105,0.8); }
+    .dark .card { background: rgba(30,41,59,0.8); border-color: rgba(51,65,85,0.6); }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 text-slate-900 dark:text-slate-100 transition-colors duration-200">
+  <header class="sticky top-0 z-40 backdrop-blur-xl bg-white/50 dark:bg-slate-900/40 border-b border-white/20 dark:border-slate-800/60">
+    <div class="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="text-xl md:text-2xl font-semibold tracking-tight">Perception Lab — Sexual Assault Analytics</div>
+        <!-- Cybernetic loop HUD -->
+        <div class="hidden md:flex items-center gap-1 ml-3 text-xs text-slate-500">
+          <span class="hud-pill">Observe</span>
+          <span>→</span>
+          <span class="hud-pill">Model</span>
+          <span>→</span>
+          <span class="hud-pill">Act</span>
+          <span>→</span>
+          <span class="hud-pill">Update</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <button @click="dark = !dark" class="px-3 py-1.5 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 transition">
+          <span x-show="!dark">🌙</span><span x-show="dark">☀️</span>
+        </button>
+        <form action="/run-analyses" method="post" onsubmit="setTimeout(()=>window.location.reload(), 800);">
+          <button class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-white shadow-soft hover:opacity-90 transition btn-primary" type="submit">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14m7-7H5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            Generate Insights
+          </button>
+        </form>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-6">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

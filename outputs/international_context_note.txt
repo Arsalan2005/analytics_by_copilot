@@ -1,0 +1,4 @@
+Indicator selection: 'sexual'.
+Year used: 2022.
+Caution: the world dataset contains many different indicators and units; this plot is a simple, exploratory comparison. Reported counts are not directly comparable across countries without harmonized definitions and population normalization.
+Interpret with caution; this chart is for contextual framing only.

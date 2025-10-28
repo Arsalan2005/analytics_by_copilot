@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Sexual Assault Analytics — Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="#">Analytics — Sexual Assault</a>
+        <div class="d-flex gap-2">
+          <input id="searchInput" class="form-control form-control-sm" placeholder="Search files or states" style="min-width:200px">
+          <button class="btn btn-outline-light btn-sm" id="refreshBtn">Refresh</button>
+          <button class="btn btn-primary btn-sm" id="runBtn">
+            <span id="runSpinner" class="spinner-border spinner-border-sm me-1 d-none" role="status" aria-hidden="true"></span>
+            <span id="runLabel">Run Analyses</span>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container my-4">
+      <div class="row mb-3">
+        <div class="col-12">
+          <h3>Outputs</h3>
+          <p class="text-muted">Grouped outputs — use search, filters, or download groups as ZIPs.</p>
+        </div>
+      </div>
+
+      <div class="row mb-2">
+        <div class="col-12">
+          <div id="groupsContainer"></div>
+        </div>
+      </div>
+
+      <div id="noResults" class="alert alert-secondary d-none">No outputs found.</div>
+    </main>
+
+    <template id="fileCardTpl">
+      <div class="col-sm-6 col-md-4 mb-3 file-card">
+        <div class="card h-100 shadow-sm">
+          <div class="card-body d-flex align-items-center gap-3">
+            <div class="thumb" style="width:72px; height:54px; flex:0 0 72px"></div>
+            <div class="flex-grow-1">
+              <h6 class="card-title mb-1 file-title"></h6>
+              <div class="small text-muted file-meta"></div>
+            </div>
+            <div class="d-flex flex-column gap-2">
+              <a class="btn btn-sm btn-outline-primary btn-open" target="_blank">Open</a>
+              <a class="btn btn-sm btn-outline-secondary btn-download" download>Download</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    // helper to create an icon/thumbnail
+    function makeThumb(file){
+      const ext = file.type;
+      if(ext==='png' || ext==='jpg' || ext==='jpeg'){
+        return `<img src='/outputs/${file.name}' class='img-fluid rounded' style='width:72px;height:54px;object-fit:cover' alt='${file.name}'>`;
+      }
+      // csv or others
+      if(ext==='csv'){
+        return `<div class='d-flex align-items-center justify-content-center bg-light rounded' style='width:72px;height:54px'><span style='font-size:20px'>📊</span></div>`;
+      }
+      return `<div class='d-flex align-items-center justify-content-center bg-light rounded' style='width:72px;height:54px'><span style='font-size:20px'>🗂️</span></div>`;
+    }
+
+    async function refreshList(){
+      const res = await fetch('/outputs-list');
+      const groups = await res.json();
+      const container = document.getElementById('groupsContainer');
+      container.innerHTML = '';
+      const search = document.getElementById('searchInput').value.trim().toLowerCase();
+      let any=false;
+      for(const [group, files] of Object.entries(groups)){
+        // filter by search
+        const filtered = files.filter(f => (f.name + ' ' + group).toLowerCase().includes(search));
+        if(filtered.length===0) continue;
+        any = true;
+        const card = document.createElement('div');
+        card.className = 'mb-4';
+        card.innerHTML = `
+          <div class='d-flex justify-content-between align-items-center mb-2'>
+            <h5 class='mb-0'>${group} <small class='text-muted'>(${filtered.length})</small></h5>
+            <div>
+              <a class='btn btn-sm btn-outline-secondary me-2' href='/download-group/${encodeURIComponent(group)}'>Download All</a>
+              <button class='btn btn-sm btn-link' data-bs-toggle='collapse' data-bs-target='#grp-${group.replace(/\s+/g,'_')}' aria-expanded='true'>Toggle</button>
+            </div>
+          </div>
+          <div class='collapse show' id='grp-${group.replace(/\s+/g,'_')}'><div class='row file-row'></div></div>`;
+        container.appendChild(card);
+        const row = card.querySelector('.file-row');
+        for(const f of filtered){
+          const tpl = document.getElementById('fileCardTpl');
+          const node = tpl.content.cloneNode(true);
+          const wrapper = node.querySelector('.file-card');
+          const title = node.querySelector('.file-title');
+          const meta = node.querySelector('.file-meta');
+          const thumb = node.querySelector('.thumb');
+          const openBtn = node.querySelector('.btn-open');
+          const dlBtn = node.querySelector('.btn-download');
+          title.innerText = f.name;
+          const d = new Date(f.mtime*1000);
+          meta.innerText = `${(f.size/1024).toFixed(1)} KB · ${d.toLocaleString()}`;
+          thumb.innerHTML = makeThumb(f);
+          openBtn.href = `/outputs/${encodeURIComponent(f.name)}`;
+          dlBtn.href = `/outputs/${encodeURIComponent(f.name)}`;
+          // tooltip
+          openBtn.title = `${f.name} — open`;
+          dlBtn.title = `${f.name} — download`;
+          row.appendChild(node);
+        }
+      }
+      document.getElementById('noResults').classList.toggle('d-none', any);
+    }
+
+    document.getElementById('refreshBtn').addEventListener('click', refreshList);
+    document.getElementById('searchInput').addEventListener('input', ()=>{ setTimeout(refreshList, 200); });
+
+    async function runAnalyses(){
+      document.getElementById('runSpinner').classList.remove('d-none');
+      document.getElementById('runLabel').innerText = 'Running...';
+      const res = await fetch('/run-analyses', {method:'POST'});
+      const j = await res.json();
+      // poll status until done
+      const poll = setInterval(async ()=>{
+        const st = await (await fetch('/status')).json();
+        if(!st.running){
+          clearInterval(poll);
+          document.getElementById('runSpinner').classList.add('d-none');
+          document.getElementById('runLabel').innerText = 'Run Analyses';
+          refreshList();
+        }
+      }, 1000);
+    }
+
+    document.getElementById('runBtn').addEventListener('click', runAnalyses);
+
+    // initial load
+    refreshList();
+    </script>
+  </body>
+</html>
