@@ -1,11 +1,14 @@
 """Analyses module for the sexual-assault datasets.
 
-This file contains a working change-point analysis implementation (analysis 1)
-and stubs for the other analyses. Run the analyses from the command line or
-via the Flask UI which calls run_all().
+This module exposes individual analysis functions as well as a small command
+line interface that can execute one or more analyses.  The Flask UI imports and
+invokes :func:`run_all`, which now coordinates every available analysis and
+captures errors so that one failure does not stop the rest of the pipeline.
 """
+import argparse
 from pathlib import Path
 import re
+from typing import Callable
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -416,7 +419,7 @@ def under_reporting_heuristic():
     return df_est
 
 
-def composite_vulnerability_index():
+def composite_vulnerability_index(df_est: pd.DataFrame | None = None):
     """Compute a Composite Vulnerability Index (CVI) per state.
 
     Components (heuristic):
@@ -435,15 +438,16 @@ def composite_vulnerability_index():
         state and population columns and I'll re-run the CVI.
     """
     # reuse under-reporting to obtain child_share and known_share and recent_total where possible
-    try:
-        df_est = under_reporting_heuristic()
-    except Exception:
-        # fallback: try reading existing output
-        est_path = OUT / 'under_reporting_estimates.csv'
-        if est_path.exists():
-            df_est = pd.read_csv(est_path)
-        else:
-            raise
+    if df_est is None:
+        try:
+            df_est = under_reporting_heuristic()
+        except Exception:
+            # fallback: try reading existing output
+            est_path = OUT / 'under_reporting_estimates.csv'
+            if est_path.exists():
+                df_est = pd.read_csv(est_path)
+            else:
+                raise
 
     # load state-year data to compute trend slopes
     try:
@@ -952,18 +956,111 @@ def international_context():
     return out
 
 
+ANALYSIS_FUNCTIONS: dict[str, Callable[..., object]] = {
+    "change_points": change_point_analysis,
+    "under_reporting": under_reporting_heuristic,
+    "cvi": composite_vulnerability_index,
+    "network": network_analysis,
+    "age_cohort": age_cohort_analysis,
+    "international": international_context,
+}
+
+
+def run_selected(names: list[str]):
+    """Execute a subset of analyses by name and return a result dictionary.
+
+    Parameters
+    ----------
+    names:
+        List of keys from :data:`ANALYSIS_FUNCTIONS`.  Unknown names raise a
+        :class:`ValueError`.
+    """
+
+    results: dict[str, object] = {}
+    for name in names:
+        func = ANALYSIS_FUNCTIONS.get(name)
+        if func is None:
+            raise ValueError(f"Unknown analysis '{name}'. Available: {sorted(ANALYSIS_FUNCTIONS)}")
+        try:
+            if name == "cvi":
+                if "under_reporting" in results and isinstance(results["under_reporting"], pd.DataFrame):
+                    results[name] = func(df_est=results["under_reporting"])
+                    continue
+                if "under_reporting_error" in results:
+                    results[f"{name}_error"] = "skipped because under_reporting failed"
+                    continue
+            results[name] = func()
+        except Exception as exc:  # pragma: no cover - defensive logging
+            results[f"{name}_error"] = str(exc)
+    return results
+
+
 def run_all():
-    """Run all available analyses (for now, change-point) and return a dict of results."""
-    out = {}
-    try:
-        cp = change_point_analysis()
-        out['change_points'] = cp
-    except Exception as e:
-        out['change_points_error'] = str(e)
-    return out
+    """Run every available analysis and return a dictionary of results/errors."""
+
+    # preserve insertion order from ANALYSIS_FUNCTIONS
+    names = list(ANALYSIS_FUNCTIONS.keys())
+    return run_selected(names)
 
 
-if __name__ == "__main__":
-    print("Running change-point analysis...")
-    res = change_point_analysis()
-    print(res.head())
+def _format_result_summary(results: dict[str, object]) -> str:
+    """Create a short human-readable summary for CLI output."""
+
+    lines = []
+    for key in ANALYSIS_FUNCTIONS:
+        if key in results:
+            val = results[key]
+            if isinstance(val, pd.DataFrame):
+                lines.append(f"✓ {key}: {len(val)} rows")
+            else:
+                lines.append(f"✓ {key}: completed")
+        elif f"{key}_error" in results:
+            lines.append(f"✗ {key}: {results[f'{key}_error']}")
+        else:
+            lines.append(f"– {key}: not run")
+    # include any stray error keys
+    for key, val in results.items():
+        if key.endswith("_error") and key[:-6] not in ANALYSIS_FUNCTIONS:
+            lines.append(f"✗ {key}: {val}")
+    return "\n".join(lines)
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Command line entrypoint allowing users to run analyses from the shell."""
+
+    parser = argparse.ArgumentParser(description="Run analytics pipelines on the sexual-assault datasets.")
+    parser.add_argument(
+        "analyses",
+        nargs="*",
+        help=(
+            "Analyses to run. Choose from {%(choices)s}. Use 'all' (default) to execute everything."
+            % {"choices": ", ".join(sorted(ANALYSIS_FUNCTIONS))}
+        ),
+    )
+    parser.add_argument(
+        "--list",
+        action="store_true",
+        help="List available analyses and exit.",
+    )
+    args = parser.parse_args(argv)
+
+    if args.list:
+        print("Available analyses:")
+        for key in ANALYSIS_FUNCTIONS:
+            print(f"  - {key}")
+        return 0
+
+    selected = args.analyses or ["all"]
+    if "all" in selected:
+        results = run_all()
+    else:
+        results = run_selected(selected)
+
+    print(_format_result_summary(results))
+    # return non-zero if any analysis produced an error entry
+    has_error = any(key.endswith("_error") for key in results)
+    return 1 if has_error else 0
+
+
+if __name__ == "__main__":  # pragma: no cover - CLI entry point
+    raise SystemExit(main())
