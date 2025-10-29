@@ -24,6 +24,21 @@ python webapp/app.py
 
 Open http://localhost:5000 in your browser. Click "Run Analyses" to start the analysis in the background. Outputs will appear in the `outputs/` directory and the UI gallery.
 
+### Command-line runner
+
+All analyses can also be executed directly from the shell:
+
+```bash
+# list available analysis pipelines
+python -m scripts.analyses --list
+
+# run every analysis
+python -m scripts.analyses
+
+# run only specific analyses (e.g. change points and network similarity)
+python -m scripts.analyses change_points network
+```
+
 What I added
 - `scripts/analyses.py`: analysis module with a working change-point analysis (1999-2013) and stubs for remaining analyses.
 - `webapp/`: minimal Flask + Bootstrap UI to run analyses and view generated PNG/CSV outputs.

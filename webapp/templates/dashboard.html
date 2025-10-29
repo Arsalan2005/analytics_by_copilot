@@ -1,163 +1,200 @@
 {% extends "base.html" %}
 {% block content %}
 
-<!-- Stats row -->
-<section class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-  <div class="panel">
-    <div class="text-xs uppercase tracking-wide text-slate-500">Total files</div>
-    <div class="text-2xl font-semibold">{{ stats.total }}</div>
+<section id="objectives" class="page-hero">
+  <div class="page-hero__content">
+    <h2 class="page-hero__title">Trusted analytics for sensitive reporting</h2>
+    <p class="page-hero__subtitle">Coordinate change-point detection, under-reporting heuristics, and global context in one deployment-ready interface.</p>
+    <div class="page-hero__actions">
+      <a href="#filters" class="btn-primary">Explore insights</a>
+      <a href="#outputs" class="btn-secondary">Browse generated files</a>
+    </div>
   </div>
-  <div class="panel">
-    <div class="text-xs uppercase tracking-wide text-slate-500">Images</div>
-    <div class="text-2xl font-semibold">{{ stats.images }}</div>
-  </div>
-  <div class="panel">
-    <div class="text-xs uppercase tracking-wide text-slate-500">Tables</div>
-    <div class="text-2xl font-semibold">{{ stats.tables }}</div>
-  </div>
-  <div class="panel">
-    <div class="text-xs uppercase tracking-wide text-slate-500">Notes</div>
-    <div class="text-2xl font-semibold">{{ stats.notes }}</div>
-  </div>
-  </section>
+  <dl class="page-hero__highlights">
+    <div>
+      <dt>Coverage</dt>
+      <dd>1999&nbsp;–&nbsp;2022 national + global datasets</dd>
+    </div>
+    <div>
+      <dt>Stakeholders</dt>
+      <dd>Policy, forensics, program delivery</dd>
+    </div>
+    <div>
+      <dt>Cadence</dt>
+      <dd>Automatable nightly or on demand</dd>
+    </div>
+  </dl>
+</section>
 
-<!-- Perception Lenses / Filters -->
-<form method="get" class="panel mb-6" x-data="{ uMode:false, glare:false, outliers:false, conf:0.0, anom:0.0 }" x-init="
-  conf = Number(new URLSearchParams(window.location.search).get('min_conf')||0);
-  anom = Number(new URLSearchParams(window.location.search).get('min_anom')||0);
-">
-  <div class="flex flex-col gap-4">
-    <div class="flex flex-col md:flex-row md:items-center gap-3">
-      <input name="q" value="{{ query }}" placeholder="Search files or states" class="input w-full" />
-      <select name="category" class="input md:w-48">
+<section class="grid gap-6 md:grid-cols-3 objective-cards" aria-label="Project pillars">
+  <article class="objective-card">
+    <h3>Objectives</h3>
+    <ul>
+      <li>Surface breakpoints in state-level reporting</li>
+      <li>Highlight under-reporting risk by cohort and offender</li>
+      <li>Provide rapid situational briefings for leadership</li>
+    </ul>
+  </article>
+  <article class="objective-card">
+    <h3>Implementation</h3>
+    <ul>
+      <li>Reusable Python analytics orchestrated via CLI or UI</li>
+      <li>Responsive Flask front end tailored for deployments</li>
+      <li>Structured metadata for preview, provenance, and download</li>
+    </ul>
+  </article>
+  <article class="objective-card">
+    <h3>Key Results</h3>
+    <ul>
+      <li>Per-state change-point intelligence with visual assets</li>
+      <li>Composite vulnerability rankings grounded in heuristics</li>
+      <li>International comparators for situational benchmarking</li>
+    </ul>
+  </article>
+</section>
+
+<section class="stats-grid" aria-label="File inventory summary">
+  <div class="stat-card">
+    <p class="stat-card__label">Total files</p>
+    <p class="stat-card__value">{{ stats.total }}</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-card__label">Images</p>
+    <p class="stat-card__value">{{ stats.images }}</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-card__label">Tables</p>
+    <p class="stat-card__value">{{ stats.tables }}</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-card__label">Narrative notes</p>
+    <p class="stat-card__value">{{ stats.notes }}</p>
+  </div>
+</section>
+
+<section id="filters" class="panel" aria-label="Filter outputs">
+  <form method="get" class="filter-form" x-data="{ conf: Number(new URLSearchParams(window.location.search).get('min_conf') || 0), anom: Number(new URLSearchParams(window.location.search).get('min_anom') || 0) }">
+    <div class="filter-form__row">
+      <input name="q" value="{{ query }}" placeholder="Search files or states" class="input" />
+      <select name="category" class="input">
         {% for c in categories %}<option value="{{ c }}" {% if c==selected_category %}selected{% endif %}>{{ c }}</option>{% endfor %}
       </select>
-      <select name="type" class="input md:w-40">
+      <select name="type" class="input">
         {% for t in types %}<option value="{{ t }}" {% if t==selected_type %}selected{% endif %}>{{ t }}</option>{% endfor %}
       </select>
-      <input name="state" value="{{ selected_state }}" placeholder="e.g., Odisha" class="input md:w-44" />
-      <div class="flex gap-2">
+      <input name="state" value="{{ selected_state }}" placeholder="State focus (optional)" class="input" />
+      <div class="filter-form__actions">
         <button class="btn-secondary" type="button" onclick="window.location='/'">Clear</button>
-        <button class="btn-primary" type="submit">Apply</button>
+        <button class="btn-primary" type="submit">Apply filters</button>
       </div>
     </div>
-
-    <!-- Cybernetic controls -->
-    <div class="grid md:grid-cols-3 gap-4 items-center">
-      <div class="flex items-center gap-2">
-        <span class="lens">Uncertainty</span>
-        <input type="checkbox" class="toggle" @change="$dispatch('lens-uncertainty', $event.target.checked)">
-        <span class="lens">Deglare</span>
-        <input type="checkbox" class="toggle" @change="$dispatch('lens-deglare', $event.target.checked)">
-        <span class="lens">Outliers</span>
-        <input type="checkbox" class="toggle" @change="$dispatch('lens-outliers', $event.target.checked)">
-      </div>
-      <div class="flex items-center gap-2">
-        <label class="text-xs text-slate-500 w-32">Min Confidence</label>
-        <input type="range" min="0" max="1" step="0.05" x-model="conf" @input="document.querySelectorAll('[data-conf]').forEach(el=>el.style.display = Number(el.dataset.conf)>=conf ? '' : 'none')" />
+    <div class="filter-form__row">
+      <label class="slider">
+        <span>Minimum confidence</span>
+        <input type="range" min="0" max="1" step="0.05" x-model="conf" @input="document.querySelectorAll('[data-conf]').forEach(el => el.style.display = Number(el.dataset.conf) >= conf ? '' : 'none')" />
         <input type="hidden" name="min_conf" :value="conf">
-        <span class="text-xs text-slate-500 w-10 text-right" x-text="conf.toFixed(2)"></span>
-      </div>
-      <div class="flex items-center gap-2">
-        <label class="text-xs text-slate-500 w-32">Min Anomaly</label>
-        <input type="range" min="0" max="1" step="0.05" x-model="anom" @input="document.querySelectorAll('[data-anom]').forEach(el=>el.style.opacity = Number(el.dataset.anom)>=anom ? 1 : 0.35)" />
+        <strong x-text="conf.toFixed(2)"></strong>
+      </label>
+      <label class="slider">
+        <span>Minimum anomaly score</span>
+        <input type="range" min="0" max="1" step="0.05" x-model="anom" @input="document.querySelectorAll('[data-anom]').forEach(el => el.style.opacity = Number(el.dataset.anom) >= anom ? 1 : 0.35)" />
         <input type="hidden" name="min_anom" :value="anom">
-        <span class="text-xs text-slate-500 w-10 text-right" x-text="anom.toFixed(2)"></span>
-      </div>
+        <strong x-text="anom.toFixed(2)"></strong>
+      </label>
+      <p class="filter-form__hint">Filters apply instantly in the grid—submit to refine the data returned from the server.</p>
     </div>
-    <p class="text-xs text-slate-500">Perception lenses alter how results are rendered — they don't change your data, only the way you <em>see</em> it.</p>
-  </div>
-</form>
+  </form>
+</section>
 
-<!-- Outputs -->
-<section class="grid sm:grid-cols-2 gap-6" x-data>
-
+<section id="outputs" class="outputs-grid" aria-live="polite">
   {% if items|length == 0 %}
-    <div class="col-span-full panel flex items-center justify-center py-20 text-slate-500">
-      No analyses found. Adjust lenses or filters.
+    <div class="empty-state">
+      <h3>No analyses available</h3>
+      <p>Adjust your filters or run the full pipeline to regenerate outputs.</p>
     </div>
   {% endif %}
 
   {% for it in items %}
-  <article class="card group"
-           data-conf="{{ '%.2f'|format(it.confidence or 0) }}"
-           data-anom="{{ '%.2f'|format(it.anomaly_score or 0) }}">
-    <header class="flex items-start justify-between gap-3">
+  <article class="insight-card" data-conf="{{ '%.2f'|format(it.confidence or 0) }}" data-anom="{{ '%.2f'|format(it.anomaly_score or 0) }}">
+    <header class="insight-card__header">
       <div>
-        <h3 class="font-semibold leading-tight">{{ it.name }}</h3>
-        <p class="text-sm text-slate-500">{{ it.category }} · {{ it.type|capitalize }}</p>
+        <h3>{{ it.name }}</h3>
+        <p>{{ it.category }} · {{ it.type|capitalize }}</p>
       </div>
-      <div class="flex items-center gap-2">
-        <span class="badge">{{ it.type|capitalize }}</span>
+      <div class="insight-card__chips">
+        <span class="chip">{{ it.type|capitalize }}</span>
+        {% if it.state %}<span class="chip chip--outline">{{ it.state }}</span>{% endif %}
         {% if it.anomaly_score and it.anomaly_score >= 0.25 %}
-          <span class="badge badge-warn" title="Potential outlier">Anom {{ '%.2f'|format(it.anomaly_score) }}</span>
+          <span class="chip chip--alert" title="Potential outlier">Anom {{ '%.2f'|format(it.anomaly_score) }}</span>
         {% endif %}
       </div>
     </header>
 
     {% if it.thumb %}
-      <img src="{{ it.thumb }}" alt="{{ it.name }}" class="mt-3 rounded-xl2 w-full object-cover shadow-sm perception-img">
+      <img src="{{ it.thumb }}" alt="{{ it.name }}" class="insight-card__preview perception-img" loading="lazy">
     {% else %}
-      <div class="mt-3 rounded-xl2 bg-slate-100 dark:bg-slate-800 h-36 flex items-center justify-center text-slate-400">No Preview</div>
+      <div class="insight-card__placeholder">No inline preview</div>
     {% endif %}
 
-    <div class="mt-4 flex items-center justify-between">
-      <!-- Confidence meter -->
-      <div class="flex items-center gap-2">
-        <div class="meter" style="--v: {{ (it.confidence or 0) }}"></div>
-        <span class="text-xs text-slate-500">Conf {{ '%.2f'|format(it.confidence or 0) }}</span>
+    <dl class="insight-card__meta">
+      <div>
+        <dt>Confidence</dt>
+        <dd>
+          <span class="meter" style="--v: {{ (it.confidence or 0) }}"></span>
+          <span>{{ '%.2f'|format(it.confidence or 0) }}</span>
+        </dd>
       </div>
+      <div>
+        <dt>File size</dt>
+        <dd>{{ it.size }}</dd>
+      </div>
+      <div>
+        <dt>Updated</dt>
+        <dd>{{ it.updated_at }}</dd>
+      </div>
+    </dl>
 
-      <div class="flex items-center gap-2">
-        <button type="button" class="btn-ghost"
-                @click="$dispatch('open-preview', { id: '{{ it.id }}', name: '{{ it.name }}', src: '{{ it.thumb or '' }}' })">Preview</button>
-        <button type="button" class="btn-ghost"
-                @click="$dispatch('open-provenance', { name: '{{ it.name }}', trail: {{ it.provenance|tojson }} })">Provenance</button>
-        <a class="btn-primary" href="{{ url_for('download_by_id', item_id=it.id) }}">Download</a>
-      </div>
+    <div class="insight-card__actions">
+      <button type="button" class="btn-ghost" @click="$dispatch('open-preview', { id: '{{ it.id }}', name: '{{ it.name }}', src: '{{ it.thumb or '' }}' })">Preview</button>
+      <button type="button" class="btn-ghost" @click="$dispatch('open-provenance', { name: '{{ it.name }}', trail: {{ it.provenance|tojson }} })">Provenance</button>
+      <a class="btn-primary" href="{{ url_for('download_by_id', item_id=it.id) }}">Download</a>
     </div>
-
-    <footer class="mt-3 text-xs text-slate-500">{{ it.size }} • {{ it.updated_at }}</footer>
   </article>
   {% endfor %}
 
   <!-- Preview Modal -->
-  <div x-data="{ open:false, item:{} }"
-       @open-preview.window="item=$event.detail; open=true"
-       x-show="open" x-transition.opacity class="fixed inset-0 z-50">
-    <div class="absolute inset-0 bg-black/60" @click="open=false"></div>
-    <div class="absolute inset-0 flex items-center justify-center p-4">
-      <div class="w-full max-w-3xl panel !bg-white/80 dark:!bg-slate-900/70">
-        <div class="flex items-center justify-between">
-          <h4 class="font-semibold" x-text="item.name"></h4>
+  <div x-data="{ open:false, item:{} }" @open-preview.window="item=$event.detail; open=true" x-show="open" x-transition.opacity class="modal" role="dialog" aria-modal="true">
+    <div class="modal__backdrop" @click="open=false"></div>
+    <div class="modal__panel">
+      <div class="modal__content">
+        <div class="modal__header">
+          <h4 x-text="item.name"></h4>
           <button class="btn-ghost" @click="open=false">Close</button>
         </div>
-        <div class="mt-4">
-          <template x-if="item.src"><img :src="item.src" class="rounded-xl2 w-full object-contain max-h-[70vh] shadow" /></template>
-          <template x-if="!item.src"><div class="text-slate-500 text-center py-16">No inline preview for this file.</div></template>
+        <div class="modal__body">
+          <template x-if="item.src"><img :src="item.src" class="modal__image" /></template>
+          <template x-if="!item.src"><div class="modal__empty">No inline preview for this file.</div></template>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Provenance Modal -->
-  <div x-data="{ open:false, trail:[], name:'' }"
-       @open-provenance.window="trail=$event.detail.trail; name=$event.detail.name; open=true"
-       x-show="open" x-transition.opacity class="fixed inset-0 z-50">
-    <div class="absolute inset-0 bg-black/60" @click="open=false"></div>
-    <div class="absolute inset-0 flex items-center justify-center p-4">
-      <div class="w-full max-w-xl panel !bg-white/85 dark:!bg-slate-900/70">
-        <div class="flex items-center justify-between">
-          <h4 class="font-semibold">Provenance — <span x-text="name"></span></h4>
+  <div x-data="{ open:false, trail:[], name:'' }" @open-provenance.window="trail=$event.detail.trail; name=$event.detail.name; open=true" x-show="open" x-transition.opacity class="modal" role="dialog" aria-modal="true">
+    <div class="modal__backdrop" @click="open=false"></div>
+    <div class="modal__panel modal__panel--sm">
+      <div class="modal__content modal__content--sm">
+        <div class="modal__header">
+          <h4>Provenance — <span x-text="name"></span></h4>
           <button class="btn-ghost" @click="open=false">Close</button>
         </div>
-        <ol class="mt-4 space-y-3">
+        <ol class="modal__timeline">
           <template x-for="p in trail" :key="p.step">
-            <li class="flex items-start gap-3">
-              <div class="timeline-dot"></div>
+            <li>
+              <span class="timeline-dot"></span>
               <div>
-                <div class="font-medium" x-text="p.step"></div>
-                <div class="text-sm text-slate-500" x-text="p.detail"></div>
+                <p class="timeline-step" x-text="p.step"></p>
+                <p class="timeline-detail" x-text="p.detail"></p>
               </div>
             </li>
           </template>

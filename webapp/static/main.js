@@ -1,102 +1,59 @@
-// Cybernetic Perception Lenses JavaScript
-// Handles lens interactions and visual effects
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
-document.addEventListener('alpine:init', () => {
-  // Initialize Alpine.js components if needed
-  console.log('Perception Lab initialized');
-});
-
-// Lens event handlers - toggle body classes for global visual effects
-document.addEventListener('lens-deglare', e => {
-  document.body.classList.toggle('deglare', e.detail);
-  console.log('Deglare lens:', e.detail ? 'activated' : 'deactivated');
-});
-
-document.addEventListener('lens-uncertainty', e => {
-  document.body.classList.toggle('uncertainty', e.detail);
-  console.log('Uncertainty lens:', e.detail ? 'activated' : 'deactivated');
-});
-
-document.addEventListener('lens-outliers', e => {
-  document.body.classList.toggle('outliers', e.detail);
-  console.log('Outliers lens:', e.detail ? 'activated' : 'deactivated');
-});
-
-// Enhanced interaction feedback
 document.addEventListener('DOMContentLoaded', () => {
-  // Add subtle hover effects to perception controls
-  const lenses = document.querySelectorAll('.lens');
-  lenses.forEach(lens => {
-    lens.addEventListener('mouseenter', () => {
-      lens.style.transform = 'scale(1.05)';
-    });
-    lens.addEventListener('mouseleave', () => {
-      lens.style.transform = 'scale(1)';
-    });
-  });
+  const runButton = document.querySelector('[data-run-analyses]');
+  const spinner = runButton?.querySelector('[data-spinner]');
+  const label = runButton?.querySelector('[data-label]');
+  const feedback = document.querySelector('[data-run-feedback]');
 
-  // Add visual feedback for confidence/anomaly sliders
-  const sliders = document.querySelectorAll('input[type="range"]');
-  sliders.forEach(slider => {
-    slider.addEventListener('input', (e) => {
-      const value = parseFloat(e.target.value);
-      const percentage = (value * 100);
-      
-      // Visual feedback based on value
-      if (e.target.parentElement.textContent.includes('Confidence')) {
-        e.target.style.background = `linear-gradient(90deg, #007AFF ${percentage}%, rgba(0,0,0,0.1) ${percentage}%)`;
-      } else if (e.target.parentElement.textContent.includes('Anomaly')) {
-        e.target.style.background = `linear-gradient(90deg, #FF8C00 ${percentage}%, rgba(0,0,0,0.1) ${percentage}%)`;
+  if (runButton) {
+    runButton.addEventListener('click', async () => {
+      if (runButton.disabled) {
+        return;
       }
-    });
-  });
 
-  // Initialize slider backgrounds
-  sliders.forEach(slider => {
-    slider.dispatchEvent(new Event('input'));
-  });
-});
+      runButton.disabled = true;
+      spinner?.classList.remove('hidden');
+      label && (label.textContent = 'Queued...');
+      feedback && (feedback.textContent = 'Launching analytics pipeline. You can continue to browse while it runs.');
 
-// Perception state management
-window.PerceptionLab = {
-  state: {
-    uncertainty: false,
-    deglare: false,
-    outliers: false,
-    confidence: 0.0,
-    anomaly: 0.0
-  },
-  
-  toggleLens: function(lens) {
-    this.state[lens] = !this.state[lens];
-    document.body.classList.toggle(lens, this.state[lens]);
-    return this.state[lens];
-  },
-  
-  updateFilter: function(filter, value) {
-    this.state[filter] = value;
-    this.applyFilters();
-  },
-  
-  applyFilters: function() {
-    const cards = document.querySelectorAll('[data-conf]');
-    cards.forEach(card => {
-      const conf = parseFloat(card.dataset.conf) || 0;
-      const anom = parseFloat(card.dataset.anom) || 0;
-      
-      const show = conf >= this.state.confidence && anom >= this.state.anomaly;
-      card.style.display = show ? '' : 'none';
-      
-      if (show && anom < this.state.anomaly) {
-        card.style.opacity = '0.35';
-      } else {
-        card.style.opacity = '1';
+      try {
+        const response = await fetch('/run-analyses', { method: 'POST' });
+        const result = await response.json();
+
+        if (result.status === 'already_running') {
+          feedback && (feedback.textContent = 'Pipeline is already running. You will see new files once processing completes.');
+        } else {
+          label && (label.textContent = 'Running...');
+          await pollUntilComplete();
+          feedback && (feedback.textContent = 'Processing complete. Refreshing results.');
+          await sleep(500);
+          window.location.reload();
+        }
+      } catch (error) {
+        console.error('Failed to run analyses', error);
+        feedback && (feedback.textContent = 'Unable to launch the pipeline. Check server logs and try again.');
+        runButton.disabled = false;
+        spinner?.classList.add('hidden');
+        label && (label.textContent = 'Run Full Pipeline');
       }
     });
   }
-};
+});
 
-// Export for global use
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = window.PerceptionLab;
+async function pollUntilComplete() {
+  while (true) {
+    try {
+      const statusResponse = await fetch('/status');
+      const status = await statusResponse.json();
+      if (!status.running) {
+        break;
+      }
+    } catch (error) {
+      console.warn('Polling status failed', error);
+    }
+    await sleep(1000);
+  }
 }
